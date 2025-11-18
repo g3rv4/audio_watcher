@@ -1,0 +1,4 @@
+.claude/
+build/
+*.egg-info
+.python-version

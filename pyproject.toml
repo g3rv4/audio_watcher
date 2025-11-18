@@ -1,0 +1,10 @@
+[project]
+name = "audio-watcher"
+version = "0.1.0"
+
+[tool.poetry.dependencies]
+python = "^3.13"
+pyobjc = "^12.1"
+
+[project.scripts]
+audio-watcher = "audio_watcher.main:start"
