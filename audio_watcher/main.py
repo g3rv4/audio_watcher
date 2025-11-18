@@ -1,4 +1,4 @@
-from CoreFoundation import CFRunLoopRun
+from CoreFoundation import CFRunLoopRun, CFRunLoopStop, CFRunLoopGetCurrent
 from CoreAudio import (
     AudioHardwareAddPropertyListener,
     kAudioHardwarePropertyDevices,
@@ -8,6 +8,8 @@ import subprocess
 import objc
 import time
 import logging
+import signal
+import sys
 
 # Configure logging with timestamp
 logging.basicConfig(
@@ -80,8 +82,18 @@ def _callback(_addr, _data):
 
 
 def start():
+    # Set up signal handlers for graceful shutdown
+    def signal_handler(_sig, _frame):
+        log.info("Received signal to stop, shutting down...")
+        CFRunLoopStop(CFRunLoopGetCurrent())
+        sys.exit(0)
+
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
     on_devices_changed()
     AudioHardwareAddPropertyListener(kAudioHardwarePropertyDevices, _callback, None)
+    log.info("Audio watcher started. Press Ctrl+C to stop.")
     CFRunLoopRun()
 
 
