@@ -11,11 +11,11 @@ import logging
 import signal
 import sys
 
-# Configure logging with timestamp
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    datefmt='%Y-%m-%d %H:%M:%S',
+    stream=sys.stdout
 )
 log = logging.getLogger(__name__)
 
@@ -26,7 +26,9 @@ def get_current_devices():
     """Get the current list of audio input device names using CoreAudio."""
     try:
         devices = AVCaptureDevice.devicesWithMediaType_(AVMediaTypeAudio)
-        return set(device.localizedName() for device in devices)
+        names = set(device.localizedName() for device in devices)
+        names.discard("Garangolongo Microphone") # don't want to trigger on the phone
+        return names
     except Exception as e:
         log.info(f"Error getting devices: {e}")
         return set()

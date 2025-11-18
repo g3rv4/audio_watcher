@@ -2,7 +2,7 @@
 set -e
 
 echo "Installing audio_watcher..."
-pipx install .
+pipx install --force .
 
 echo "Creating log directory..."
 mkdir -p ~/Library/Logs/audio_watcher
