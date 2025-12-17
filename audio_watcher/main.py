@@ -1,7 +1,7 @@
 from CoreFoundation import CFRunLoopRun, CFRunLoopStop, CFRunLoopGetCurrent
 from CoreAudio import (
     AudioHardwareAddPropertyListener,
-    kAudioHardwarePropertyDevices,
+    kAudioHardwarePropertyDefaultInputDevice,
 )
 from AVFoundation import AVCaptureDevice, AVMediaTypeAudio
 import subprocess
@@ -13,25 +13,25 @@ import sys
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S',
-    stream=sys.stdout
+    format="%(asctime)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    stream=sys.stdout,
 )
 log = logging.getLogger(__name__)
 
 _last_devices = None
 
 
-def get_current_devices():
-    """Get the current list of audio input device names using CoreAudio."""
+def get_input_device_name():
+    """Get the name of the current default input device."""
     try:
-        devices = AVCaptureDevice.devicesWithMediaType_(AVMediaTypeAudio)
-        names = set(device.localizedName() for device in devices)
-        names.discard("Garangolongo Microphone") # don't want to trigger on the phone
-        return names
+        default_device = AVCaptureDevice.defaultDeviceWithMediaType_(AVMediaTypeAudio)
+        if default_device:
+            return default_device.localizedName()
+        return None
     except Exception as e:
-        log.info(f"Error getting devices: {e}")
-        return set()
+        log.info(f"Error getting input device: {e}")
+        return None
 
 
 def on_devices_changed():
@@ -42,7 +42,7 @@ def on_devices_changed():
             [
                 "osascript",
                 "-e",
-                'tell application "Keyboard Maestro Engine" to do script "Devices changed"',
+                'tell application "Keyboard Maestro Engine" to do script "Update Icon"',
             ],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
@@ -51,28 +51,8 @@ def on_devices_changed():
     # Wait for the audio subsystem to settle before querying devices
     time.sleep(0.1)
 
-    # Get current devices
-    current_devices = get_current_devices()
-
-    # First run - just store the device list
-    if _last_devices is None:
-        _last_devices = current_devices
-        log.info(f"Initial devices: {sorted(current_devices)}")
-        trigger_macro()
-        return
-
-    # Check if devices actually changed
-    if current_devices == _last_devices:
-        # print("Property change but no device list change - ignoring")
-        return
-
-    added = current_devices - _last_devices
-    removed = _last_devices - current_devices
-    if added:
-        log.info(f"Added: {sorted(added)}")
-    if removed:
-        log.info(f"Removed: {sorted(removed)}")
-    _last_devices = current_devices
+    input_device = get_input_device_name()
+    log.info(f"Current input device: {input_device}")
 
     trigger_macro()
 
@@ -94,8 +74,10 @@ def start():
     signal.signal(signal.SIGTERM, signal_handler)
 
     on_devices_changed()
-    AudioHardwareAddPropertyListener(kAudioHardwarePropertyDevices, _callback, None)
-    log.info("Audio watcher started. Press Ctrl+C to stop.")
+    AudioHardwareAddPropertyListener(
+        kAudioHardwarePropertyDefaultInputDevice, _callback, None
+    )
+    log.info("Monitoring default input device changes. Press Ctrl+C to stop.")
     CFRunLoopRun()
 
 
